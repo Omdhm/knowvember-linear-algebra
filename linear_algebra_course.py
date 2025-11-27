@@ -18,6 +18,7 @@ class Colors:
     EIGEN_2 = "#F472B6"
     GRID_MAIN = "#64748B"
     GRID_FADED = "#334155"
+    GRID_FAINT = "#475569"  # Lighter gray for original/reference planes
     TEXT_PRIMARY = "#F8FAFC"
     TEXT_SECONDARY = "#94A3B8"
 
@@ -35,19 +36,19 @@ class Config:
 # MAIN CLASS
 # =============================================================================
 
-class LinearAlgebraCourse(ThreeDScene):
+class LinearAlgebraCourse(InteractiveScene):
     
     def construct(self):
         self._setup_resources()
         
-    #    self._intro_sequence()
-     #   self._chapter_vectors()
-       # self._chapter_linear_combinations()
-       # self._chapter_transformations()
-       # self._chapter_matrix_multiplication()
-       # self._chapter_determinants()
-        self._chapter_dot_product()
-        self._chapter_cross_product()
+        #self._intro_sequence()
+        #self._chapter_vectors()
+        #self._chapter_linear_combinations()
+        #self._chapter_transformations()
+        #self._chapter_matrix_multiplication()
+        #self._chapter_determinants()
+        #self._chapter_dot_product()
+        #self._chapter_cross_product()
         self._chapter_eigenvectors()
         self._outro_sequence()
     
@@ -106,32 +107,41 @@ class LinearAlgebraCourse(ThreeDScene):
         plane.set_z_index(-10)  # Put grid behind other elements
         return plane
     
+    def _create_vector(self, coords, color, stroke_width=5):
+        """Create a vector with proper tip rendering to avoid visual artifacts."""
+        v = Vector(coords, color=color, stroke_width=stroke_width)
+        # Fix the arrow tip rendering issue by ensuring proper fill
+        # In ManimGL, use get_tip() method instead of .tip attribute
+        try:
+            tip = v.get_tip()
+            tip.set_fill(color, opacity=1)
+            tip.set_stroke(color, width=0)  # Remove stroke from tip to prevent hollow appearance
+        except:
+            pass  # Some vectors may not have tips
+        v.set_z_index(5)
+        return v
+    
     # =========================================================================
     # INTRO
     # =========================================================================
     
     def _intro_sequence(self):
         # 3D Intro
-        title = Text("Linear Algebra", font_size=Config.TITLE_FONT_SIZE, color=Colors.PRIMARY, weight=BOLD)
+        title = Text("Knowvember: Introduction to Linear Algebra", font_size=Config.TITLE_FONT_SIZE, color=Colors.PRIMARY, weight=BOLD)
         subtitle = Text("An Intuitive understanding", font_size=Config.SUBTITLE_FONT_SIZE, color=Colors.TEXT_SECONDARY)
         subtitle.next_to(title, DOWN, buff=0.5)
         
         group = VGroup(title, subtitle)
         
         # Start with camera rotation
-        frame = self.camera.frame
-        frame.set_euler_angles(theta=-30 * DEGREES, phi=70 * DEGREES)
+        #frame = self.camera.frame
+        #frame.set_euler_angles(theta=-30 * DEGREES, phi=70 * DEGREES)
         
         self.play(DrawBorderThenFill(title), run_time=1.5)
         self.play(FadeIn(subtitle, shift=UP))
         
-        # Rotate camera back to normal
-        self.play(
-            frame.animate.set_euler_angles(theta=0, phi=0),
-            run_time=2,
-            rate_func=smooth
-        )
-        self.wait(1)
+     
+        self.wait(2)
         self.play(FadeOut(group, shift=UP))
         
     
@@ -212,7 +222,7 @@ class LinearAlgebraCourse(ThreeDScene):
                 tick_marks.add(x_tick, y_tick)
         
         self.play(ShowCreation(tick_marks, lag_ratio=0.05))
-        self.wait(1)
+        self.wait()
         
         # Extend to full grid
         self.play(FadeOut(unit_text))
@@ -659,7 +669,7 @@ class LinearAlgebraCourse(ThreeDScene):
         self.play(Write(special_text))
         
         # i-hat: unit vector along x
-        i_hat = Vector([1, 0], color=Colors.I_HAT, stroke_width=6)
+        i_hat = self._create_vector([1, 0], color=Colors.I_HAT, stroke_width=6)
         i_label = Tex(r"\hat{\imath}", color=Colors.I_HAT, font_size=44)
         i_label.next_to(i_hat.get_end(), DOWN, buff=0.15)
         
@@ -673,7 +683,7 @@ class LinearAlgebraCourse(ThreeDScene):
         self.wait(0.5)
         
         # j-hat: unit vector along y
-        j_hat = Vector([0, 1], color=Colors.J_HAT, stroke_width=6)
+        j_hat = self._create_vector([0, 1], color=Colors.J_HAT, stroke_width=6)
         j_label = Tex(r"\hat{\jmath}", color=Colors.J_HAT, font_size=44)
         j_label.next_to(j_hat.get_end(), LEFT, buff=0.15)
         
@@ -1024,56 +1034,97 @@ class LinearAlgebraCourse(ThreeDScene):
     def _transform_intro(self):
         """Introduce transformations as functions that move vectors."""
         
-        # Title concept
-        intro_text = Text("A transformation takes vectors as input and output",
-                         font_size=Config.BODY_FONT_SIZE, color=Colors.TEXT_SECONDARY)
+        # Start with the key concept: a matrix IS a transformation
+        intro_text = Text("A matrix represents a transformation of space",
+                         font_size=Config.BODY_FONT_SIZE, color=Colors.PRIMARY)
         intro_text.to_edge(UP, buff=0.5)
         self.play(Write(intro_text))
         self.wait(1)
         
-        # Why "transformation"?
+        # Show a matrix first
+        matrix_A = Tex(r"A = \begin{bmatrix} 2 & 1 \\ 0 & 1.5 \end{bmatrix}",
+                      font_size=48, color=Colors.ACCENT)
+        self.play(Write(matrix_A))
+        self.wait(1)
+        
+        # Explain what it does
         self.play(FadeOut(intro_text))
-        why_text = Text("'Transformation' suggests movement",
-                       font_size=Config.BODY_FONT_SIZE, color=Colors.ACCENT)
-        why_text.to_edge(UP, buff=0.5)
-        self.play(Write(why_text))
+        action_text = Text("This matrix A transforms every vector in space",
+                          font_size=Config.BODY_FONT_SIZE, color=Colors.TEXT_SECONDARY)
+        action_text.to_edge(UP, buff=0.5)
+        self.play(Write(action_text))
+        
+        # Show the formula
+        formula = Tex(r"\vec{v}_{new} = A \cdot \vec{v}",
+                     font_size=40, color=Colors.TEXT_PRIMARY)
+        formula.next_to(matrix_A, DOWN, buff=0.5)
+        self.play(Write(formula))
+        self.wait(1.5)
+        
+        # Move matrix to corner
+        self.play(
+            matrix_A.animate.scale(0.7).to_corner(UR, buff=0.5),
+            FadeOut(formula),
+            FadeOut(action_text)
+        )
         
         # Show grid
-        plane = self._create_grid(opacity=0.5)
-        self.play(FadeIn(plane), run_time=0.8)
+        original_plane = self._create_grid(opacity=0.3, color=Colors.GRID_FADED)
+        original_plane.set_z_index(-15)
         
-        # Show a vector moving
-        v_start = Vector([2, 1], color=Colors.RESULT, stroke_width=5)
-        self.play(GrowArrow(v_start))
+        plane = self._create_grid(opacity=0.5, color=Colors.GRID_MAIN)
+        plane.set_z_index(-10)
+        self.play(FadeIn(original_plane), FadeIn(plane), run_time=0.8)
         
-        # Animate it "transforming" - create a new vector for the end state
-        v_end = Vector([1, 2.5], color=Colors.RESULT, stroke_width=5)
-        self.play(Transform(v_start, v_end), run_time=1.5)
+        # Show several vectors BEFORE transformation
+        vectors_text = Text("Let's watch what happens to different vectors",
+                           font_size=Config.BODY_FONT_SIZE, color=Colors.TEXT_SECONDARY)
+        vectors_text.to_edge(UP, buff=0.5)
+        self.play(Write(vectors_text))
+        
+        # Create multiple test vectors
+        v1 = self._create_vector([2, 1], color=Colors.PRIMARY, stroke_width=4)
+        v2 = self._create_vector([1, 2], color=Colors.SECONDARY, stroke_width=4)
+        v3 = self._create_vector([-1, 1], color=Colors.RESULT, stroke_width=4)
+        
+        self.play(GrowArrow(v1), GrowArrow(v2), GrowArrow(v3))
         self.wait(1)
         
-        # Think of every point moving
-        self.play(FadeOut(why_text), FadeOut(v_start))
-        points_text = Text("Imagine every point in space moving",
+        # Apply the transformation
+        self.play(FadeOut(vectors_text))
+        apply_text = Text("Apply the transformation: multiply by A",
+                         font_size=Config.BODY_FONT_SIZE, color=Colors.ACCENT)
+        apply_text.to_edge(UP, buff=0.5)
+        self.play(Write(apply_text))
+        
+        # Prepare grid for transformation
+        plane.prepare_for_nonlinear_transform()
+        
+        matrix = [[2, 1], [0, 1.5]]
+        self.play(
+            ApplyMatrix(matrix, plane),
+            ApplyMatrix(matrix, v1),
+            ApplyMatrix(matrix, v2),
+            ApplyMatrix(matrix, v3),
+            run_time=3,
+            rate_func=smooth
+        )
+        self.wait(1)
+        
+        # Explain what happened
+        self.play(FadeOut(apply_text))
+        result_text = Text("Every vector moved to a new position!",
                           font_size=Config.BODY_FONT_SIZE, color=Colors.TEXT_SECONDARY)
-        points_text.to_edge(UP, buff=0.5)
-        self.play(Write(points_text))
-        
-        # Add some dots to visualize
-        dots = VGroup()
-        for x in range(-4, 5):
-            for y in range(-3, 4):
-                if x != 0 or y != 0:
-                    dot = Dot([x, y, 0], radius=0.06, color=Colors.TEXT_SECONDARY)
-                    dot.set_opacity(0.5)
-                    dots.add(dot)
-        
-        self.play(FadeIn(dots, lag_ratio=0.01))
-        self.wait(1)
+        result_text.to_edge(UP, buff=0.5)
+        self.play(Write(result_text))
+        self.wait(1.5)
         
         # Store for next section
+        self.tf_original_plane = original_plane
         self.tf_plane = plane
-        self.tf_dots = dots
-        self.play(FadeOut(points_text))
+        self.tf_matrix_display = matrix_A
+        
+        self.play(FadeOut(result_text), FadeOut(v1), FadeOut(v2), FadeOut(v3))
     
     def _transform_linearity(self):
         """Explain what makes a transformation 'linear'."""
@@ -1106,7 +1157,13 @@ class LinearAlgebraCourse(ThreeDScene):
         self.play(Write(consequence))
         self.wait(2)
         
-        self.play(FadeOut(consequence))
+        # Cleanup the plane from intro
+        self.play(
+            FadeOut(consequence),
+            FadeOut(self.tf_plane),
+            FadeOut(self.tf_original_plane),
+            FadeOut(self.tf_matrix_display)
+        )
     
     def _transform_basis_tracking(self):
         """Show that tracking basis vectors tells you everything."""
@@ -1117,9 +1174,18 @@ class LinearAlgebraCourse(ThreeDScene):
         key_text.to_edge(UP, buff=0.5)
         self.play(Write(key_text))
         
+        # Create planes for this section
+        original_plane = self._create_grid(opacity=0.2, color=Colors.GRID_FAINT)
+        original_plane.set_z_index(-15)
+        plane = self._create_grid(opacity=0.4)
+        plane.set_z_index(-10)
+        plane.prepare_for_nonlinear_transform()
+        
+        self.play(FadeIn(original_plane), FadeIn(plane), run_time=0.5)
+        
         # Add basis vectors
-        i_hat = Vector([1, 0], color=Colors.I_HAT, stroke_width=5)
-        j_hat = Vector([0, 1], color=Colors.J_HAT, stroke_width=5)
+        i_hat = self._create_vector([1, 0], Colors.I_HAT, stroke_width=5)
+        j_hat = self._create_vector([0, 1], Colors.J_HAT, stroke_width=5)
         i_label = Tex(r"\hat{\imath}", color=Colors.I_HAT, font_size=32)
         i_label.next_to(i_hat.get_end(), DOWN, buff=0.1)
         j_label = Tex(r"\hat{\jmath}", color=Colors.J_HAT, font_size=32)
@@ -1129,7 +1195,7 @@ class LinearAlgebraCourse(ThreeDScene):
         self.wait(1)
         
         # Add an example vector
-        v = Vector([-1, 2], color=Colors.RESULT, stroke_width=4)
+        v = self._create_vector([-1, 2], Colors.RESULT, stroke_width=4)
         v_label = Tex(r"\vec{v} = -1\hat{\imath} + 2\hat{\jmath}", color=Colors.RESULT, font_size=28)
         v_label.to_corner(UL, buff=1).shift(DOWN * 1.5)
         
@@ -1146,13 +1212,9 @@ class LinearAlgebraCourse(ThreeDScene):
         # Define transformation: i-hat goes to [1, -2], j-hat goes to [3, 0]
         matrix = [[1, 3], [-2, 0]]
         
-        # Prepare grid for transformation
-        self.tf_plane.prepare_for_nonlinear_transform()
-        
         # Apply transformation
         self.play(
-            ApplyMatrix(matrix, self.tf_plane),
-            ApplyMatrix(matrix, self.tf_dots),
+            ApplyMatrix(matrix, plane),
             ApplyMatrix(matrix, i_hat),
             ApplyMatrix(matrix, j_hat),
             ApplyMatrix(matrix, v),
@@ -1171,9 +1233,9 @@ class LinearAlgebraCourse(ThreeDScene):
         self.play(Write(result_text))
         self.wait(2)
         
-        # Cleanup and store
+        # Cleanup
         self.play(
-            FadeOut(self.tf_plane), FadeOut(self.tf_dots),
+            FadeOut(plane), FadeOut(original_plane),
             FadeOut(i_hat), FadeOut(j_hat), FadeOut(v),
             FadeOut(i_label), FadeOut(j_label), FadeOut(v_label),
             FadeOut(result_text)
@@ -1899,79 +1961,139 @@ class LinearAlgebraCourse(ThreeDScene):
     def _eigen_intro(self):
         """Introduce the core idea: vectors that stay on their span."""
         
-        intro = Text("Consider what a transformation does to any vector...",
+        # First, show the matrix we'll use
+        intro = Text("Let's see what a transformation does to different vectors",
                     font_size=Config.BODY_FONT_SIZE, color=Colors.TEXT_SECONDARY)
         intro.to_edge(UP, buff=0.5)
         self.play(Write(intro))
         
-        # Setup grid
+        # Show the transformation matrix prominently
+        matrix_display = Tex(r"A = \begin{bmatrix} 3 & 1 \\ 0 & 2 \end{bmatrix}",
+                            font_size=44, color=Colors.PRIMARY)
+        matrix_display.to_corner(UL, buff=0.5).shift(DOWN * 0.5)
+        self.play(Write(matrix_display))
+        
+        # Setup grid with original reference
+        original_plane = self._create_grid(opacity=0.15, color=Colors.GRID_FAINT)
+        original_plane.set_z_index(-15)
         plane = self._create_grid(opacity=0.3)
+        plane.set_z_index(-10)
         plane.prepare_for_nonlinear_transform()
-        self.play(FadeIn(plane), run_time=0.5)
+        self.play(FadeIn(original_plane), FadeIn(plane), run_time=0.5)
         
-        # Show a random vector and its span (line through origin)
-        v = Vector([1.5, 1], color=Colors.ACCENT, stroke_width=5)
-        span_line = DashedLine([-4, -2.67, 0], [4, 2.67, 0], color=Colors.ACCENT, stroke_width=2)
-        span_line.set_opacity(0.5)
+        # Create several test vectors - some will stay on span, some won't
+        # Regular vectors that get knocked off their span
+        v1 = self._create_vector([1.5, 1], Colors.ERROR, stroke_width=4)  # Red - will be knocked off
+        v2 = self._create_vector([1, 1.5], Colors.ERROR, stroke_width=4)  # Red - will be knocked off
         
-        self.play(GrowArrow(v), ShowCreation(span_line))
+        # Eigenvectors that stay on their span
+        v_eigen1 = self._create_vector([1, 0], Colors.SUCCESS, stroke_width=5)  # Green - x-axis (eigenvector)
+        v_eigen2 = self._create_vector([-1, 1], Colors.SUCCESS, stroke_width=5)  # Green - diagonal (eigenvector)
         
-        span_text = Text("The span of this vector (line through origin and tip)",
-                        font_size=24, color=Colors.TEXT_SECONDARY)
-        span_text.to_edge(DOWN, buff=0.8)
-        self.play(Write(span_text))
+        # Labels
+        label_knocked = Text("Gets knocked off span", font_size=20, color=Colors.ERROR)
+        label_knocked.to_corner(UR, buff=0.7)
+        label_stays = Text("Stays on span!", font_size=20, color=Colors.SUCCESS)
+        label_stays.next_to(label_knocked, DOWN, buff=0.3)
+        
+        # Draw span lines for all vectors
+        span1 = DashedLine([-4, -2.67, 0], [4, 2.67, 0], color=Colors.ERROR, stroke_width=1.5).set_opacity(0.4)
+        span2 = DashedLine([-6, -9, 0], [6, 9, 0], color=Colors.ERROR, stroke_width=1.5).set_opacity(0.4)
+        span_x = DashedLine([-6, 0, 0], [6, 0, 0], color=Colors.SUCCESS, stroke_width=2).set_opacity(0.6)
+        span_diag = DashedLine([4, -4, 0], [-4, 4, 0], color=Colors.SUCCESS, stroke_width=2).set_opacity(0.6)
+        
+        self.play(
+            GrowArrow(v1), GrowArrow(v2),
+            GrowArrow(v_eigen1), GrowArrow(v_eigen2),
+            ShowCreation(span1), ShowCreation(span2),
+            ShowCreation(span_x), ShowCreation(span_diag),
+            Write(label_knocked), Write(label_stays)
+        )
         self.wait(1)
         
-        # Apply transformation - vector gets knocked off its span
-        self.play(FadeOut(intro), FadeOut(span_text))
-        knocked_text = Text("Most vectors get knocked OFF their span",
-                           font_size=Config.BODY_FONT_SIZE, color=Colors.ERROR)
-        knocked_text.to_edge(UP, buff=0.5)
-        self.play(Write(knocked_text))
+        # Apply transformation - watch what happens!
+        self.play(FadeOut(intro))
+        watch_text = Text("Watch: which vectors stay on their original line?",
+                         font_size=Config.BODY_FONT_SIZE, color=Colors.ACCENT)
+        watch_text.to_edge(UP, buff=0.5)
+        self.play(Write(watch_text))
+        self.wait(1)
         
         matrix = [[3, 1], [0, 2]]
         self.play(
             ApplyMatrix(matrix, plane),
-            ApplyMatrix(matrix, v),
-            run_time=2
+            ApplyMatrix(matrix, v1),
+            ApplyMatrix(matrix, v2),
+            ApplyMatrix(matrix, v_eigen1),
+            ApplyMatrix(matrix, v_eigen2),
+            run_time=3
         )
         self.wait(1)
         
-        # Cleanup
-        self.play(FadeOut(plane), FadeOut(v), FadeOut(span_line), FadeOut(knocked_text))
+        # Highlight the result
+        self.play(FadeOut(watch_text))
+        result_text = Text("Red vectors were knocked OFF their original span",
+                          font_size=Config.BODY_FONT_SIZE - 2, color=Colors.ERROR)
+        result_text.to_edge(UP, buff=0.5)
+        self.play(Write(result_text))
+        self.wait(1.5)
         
-        # But SOME vectors stay on their span
-        special_text = Text("But SOME special vectors stay on their span!",
-                           font_size=Config.BODY_FONT_SIZE, color=Colors.SUCCESS)
+        self.play(FadeOut(result_text))
+        eigen_text = Text("Green vectors STAYED on their span - just stretched!",
+                         font_size=Config.BODY_FONT_SIZE - 2, color=Colors.SUCCESS)
+        eigen_text.to_edge(UP, buff=0.5)
+        self.play(Write(eigen_text))
+        self.wait(1.5)
+        
+        # Cleanup
+        self.play(
+            FadeOut(plane), FadeOut(original_plane),
+            FadeOut(v1), FadeOut(v2), FadeOut(v_eigen1), FadeOut(v_eigen2),
+            FadeOut(span1), FadeOut(span2), FadeOut(span_x), FadeOut(span_diag),
+            FadeOut(label_knocked), FadeOut(label_stays),
+            FadeOut(eigen_text), FadeOut(matrix_display)
+        )
+        
+        # Definition
+        special_text = Text("These special vectors are called EIGENVECTORS",
+                           font_size=Config.BODY_FONT_SIZE, color=Colors.ACCENT)
         special_text.to_edge(UP, buff=0.5)
         self.play(Write(special_text))
         
-        only_text = Text("They only get stretched or squished, not rotated",
+        only_text = Text("They only get stretched or squished, not rotated off their line",
                         font_size=Config.BODY_FONT_SIZE - 4, color=Colors.TEXT_SECONDARY)
         only_text.next_to(special_text, DOWN, buff=0.3)
         self.play(Write(only_text))
         
-        # Definition
-        def_text = Text("These are called EIGENVECTORS",
-                       font_size=Config.BODY_FONT_SIZE, color=Colors.ACCENT)
-        def_text.next_to(only_text, DOWN, buff=0.5)
-        self.play(Write(def_text))
+        formula = Tex(r"A\vec{v} = \lambda\vec{v}",
+                     font_size=48, color=Colors.PRIMARY)
+        formula.next_to(only_text, DOWN, buff=0.5)
+        self.play(Write(formula))
+        
+        formula_explain = Text("where λ (lambda) is how much it stretches",
+                              font_size=24, color=Colors.TEXT_SECONDARY)
+        formula_explain.next_to(formula, DOWN, buff=0.3)
+        self.play(Write(formula_explain))
         self.wait(2)
         
-        self.play(FadeOut(special_text), FadeOut(only_text), FadeOut(def_text))
+        self.play(FadeOut(special_text), FadeOut(only_text), 
+                  FadeOut(formula), FadeOut(formula_explain))
     
     def _eigen_example(self):
         """Show a concrete example with the matrix [[3,1],[0,2]]."""
         
-        example_text = Text("Example: Let's find the eigenvectors",
+        example_text = Text("Let's verify the eigenvectors",
                            font_size=Config.BODY_FONT_SIZE, color=Colors.PRIMARY)
         example_text.to_edge(UP, buff=0.5)
         self.play(Write(example_text))
         
-        # Setup
+        # Setup with original plane reference
+        original_plane = self._create_grid(opacity=0.15, color=Colors.GRID_FAINT)
+        original_plane.set_z_index(-15)
         plane = self._create_grid(opacity=0.3)
+        plane.set_z_index(-10)
         plane.prepare_for_nonlinear_transform()
-        self.play(FadeIn(plane), run_time=0.5)
+        self.play(FadeIn(original_plane), FadeIn(plane), run_time=0.5)
         
         # Show matrix
         matrix_tex = Tex(r"A = \begin{bmatrix} 3 & 1 \\ 0 & 2 \end{bmatrix}",
@@ -1979,86 +2101,104 @@ class LinearAlgebraCourse(ThreeDScene):
         matrix_tex.to_corner(UL, buff=0.5)
         self.play(Write(matrix_tex))
         
-        # Basis vectors
-        i_hat = Vector([1, 0], color=Colors.I_HAT, stroke_width=5)
-        j_hat = Vector([0, 1], color=Colors.J_HAT, stroke_width=5)
-        self.play(GrowArrow(i_hat), GrowArrow(j_hat))
-        
-        # i-hat is an eigenvector! Show its span
+        # Show eigenvector 1: i-hat (x-axis)
         self.play(FadeOut(example_text))
-        ihat_text = Text("i-hat stays on the x-axis (its span)!",
-                        font_size=Config.BODY_FONT_SIZE, color=Colors.I_HAT)
-        ihat_text.to_edge(UP, buff=0.5)
-        self.play(Write(ihat_text))
+        eigen1_text = Text("Eigenvector 1: Any vector on the x-axis",
+                          font_size=Config.BODY_FONT_SIZE, color=Colors.I_HAT)
+        eigen1_text.to_edge(UP, buff=0.5)
+        self.play(Write(eigen1_text))
         
+        # Show the x-axis as the eigenspace
         x_axis_line = DashedLine([-6, 0, 0], [6, 0, 0], color=Colors.I_HAT, stroke_width=2)
-        x_axis_line.set_opacity(0.5)
+        x_axis_line.set_opacity(0.6)
         self.play(ShowCreation(x_axis_line))
+        
+        i_hat = self._create_vector([1, 0], Colors.I_HAT, stroke_width=5)
+        i_label = Tex(r"\hat{\imath}", color=Colors.I_HAT, font_size=32)
+        i_label.next_to(i_hat.get_end(), DOWN, buff=0.15)
+        self.play(GrowArrow(i_hat), Write(i_label))
+        
+        # Compute Av
+        compute_text = Tex(r"A\hat{\imath} = \begin{bmatrix} 3 & 1 \\ 0 & 2 \end{bmatrix}\begin{bmatrix} 1 \\ 0 \end{bmatrix} = \begin{bmatrix} 3 \\ 0 \end{bmatrix} = 3\hat{\imath}",
+                          font_size=28, color=Colors.I_HAT)
+        compute_text.to_edge(DOWN, buff=0.7)
+        self.play(Write(compute_text))
+        self.wait(1)
         
         # Apply transformation
         matrix = [[3, 1], [0, 2]]
         self.play(
             ApplyMatrix(matrix, plane),
             ApplyMatrix(matrix, i_hat),
-            ApplyMatrix(matrix, j_hat),
-            ApplyMatrix(matrix, x_axis_line),
+            i_label.animate.next_to([3, 0, 0], DOWN, buff=0.15),
             run_time=2.5
         )
-        self.wait(1)
         
-        # i-hat is stretched by 3
-        eigenvalue_text = Tex(r"\hat{\imath} \textrm{ is stretched by } 3 \textrm{ (eigenvalue } \lambda = 3)",
-                             font_size=28, color=Colors.I_HAT)
-        eigenvalue_text.to_edge(DOWN, buff=0.8)
-        self.play(Write(eigenvalue_text))
+        eigenvalue1 = Tex(r"\lambda_1 = 3", font_size=32, color=Colors.I_HAT)
+        eigenvalue1.next_to(compute_text, UP, buff=0.3)
+        self.play(Write(eigenvalue1))
         self.wait(1.5)
         
-        # Cleanup and show another eigenvector
-        self.play(FadeOut(plane), FadeOut(i_hat), FadeOut(j_hat), 
-                  FadeOut(x_axis_line), FadeOut(ihat_text), FadeOut(eigenvalue_text))
+        # Reset for second eigenvector
+        self.play(
+            FadeOut(plane), FadeOut(i_hat), FadeOut(x_axis_line),
+            FadeOut(eigen1_text), FadeOut(compute_text), FadeOut(eigenvalue1),
+            FadeOut(i_label)
+        )
         
-        # Second eigenvector: [-1, 1]
+        # Second eigenvector
         plane2 = self._create_grid(opacity=0.3)
+        plane2.set_z_index(-10)
         plane2.prepare_for_nonlinear_transform()
         self.play(FadeIn(plane2), run_time=0.5)
         
-        sneaky_text = Text("There's another eigenvector: [-1, 1]",
+        eigen2_text = Text("Eigenvector 2: Vectors along [-1, 1] direction",
                           font_size=Config.BODY_FONT_SIZE, color=Colors.SECONDARY)
-        sneaky_text.to_edge(UP, buff=0.5)
-        self.play(Write(sneaky_text))
+        eigen2_text.to_edge(UP, buff=0.5)
+        self.play(Write(eigen2_text))
         
-        v_eigen = Vector([-1, 1], color=Colors.SECONDARY, stroke_width=5)
         diag_line = DashedLine([4, -4, 0], [-4, 4, 0], color=Colors.SECONDARY, stroke_width=2)
-        diag_line.set_opacity(0.5)
+        diag_line.set_opacity(0.6)
+        self.play(ShowCreation(diag_line))
         
-        self.play(GrowArrow(v_eigen), ShowCreation(diag_line))
+        v_eigen = self._create_vector([-1, 1], Colors.SECONDARY, stroke_width=5)
+        v_label = Tex(r"\vec{v}", color=Colors.SECONDARY, font_size=32)
+        v_label.next_to(v_eigen.get_end(), UL, buff=0.1)
+        self.play(GrowArrow(v_eigen), Write(v_label))
         
-        # Apply same transformation
+        # Compute Av
+        compute_text2 = Tex(r"A\vec{v} = \begin{bmatrix} 3 & 1 \\ 0 & 2 \end{bmatrix}\begin{bmatrix} -1 \\ 1 \end{bmatrix} = \begin{bmatrix} -2 \\ 2 \end{bmatrix} = 2\vec{v}",
+                           font_size=28, color=Colors.SECONDARY)
+        compute_text2.to_edge(DOWN, buff=0.7)
+        self.play(Write(compute_text2))
+        self.wait(1)
+        
+        # Apply transformation
         self.play(
             ApplyMatrix(matrix, plane2),
             ApplyMatrix(matrix, v_eigen),
-            ApplyMatrix(matrix, diag_line),
+            v_label.animate.next_to([-2, 2, 0], UL, buff=0.1),
             run_time=2.5
         )
         
-        eigen2_text = Tex(r"\textrm{Stretched by } 2 \textrm{ (eigenvalue } \lambda = 2)",
-                         font_size=28, color=Colors.SECONDARY)
-        eigen2_text.to_edge(DOWN, buff=0.8)
-        self.play(Write(eigen2_text))
+        eigenvalue2 = Tex(r"\lambda_2 = 2", font_size=32, color=Colors.SECONDARY)
+        eigenvalue2.next_to(compute_text2, UP, buff=0.3)
+        self.play(Write(eigenvalue2))
         self.wait(1.5)
         
         # Summary
-        self.play(FadeOut(sneaky_text), FadeOut(eigen2_text))
+        self.play(FadeOut(eigen2_text), FadeOut(compute_text2), FadeOut(eigenvalue2))
         summary = VGroup(
-            Text("This transformation has two eigenvectors:", font_size=28, color=Colors.TEXT_PRIMARY),
-            Tex(r"\textrm{x-axis vectors: } \lambda = 3", font_size=28, color=Colors.I_HAT),
-            Tex(r"\textrm{diagonal vectors: } \lambda = 2", font_size=28, color=Colors.SECONDARY),
+            Text("This matrix has two eigenvectors:", font_size=28, color=Colors.TEXT_PRIMARY),
+            Tex(r"\vec{v}_1 = \textrm{x-axis vectors}, \quad \lambda_1 = 3", font_size=28, color=Colors.I_HAT),
+            Tex(r"\vec{v}_2 = \textrm{[-1,1] direction}, \quad \lambda_2 = 2", font_size=28, color=Colors.SECONDARY),
         ).arrange(DOWN, buff=0.3)
         summary.to_edge(UP, buff=0.5)
         self.play(Write(summary))
         self.wait(2)
         
-        self.play(FadeOut(plane2), FadeOut(v_eigen), FadeOut(diag_line), 
+        self.play(FadeOut(plane2), FadeOut(original_plane), FadeOut(v_eigen), 
+                  FadeOut(diag_line), FadeOut(v_label),
                   FadeOut(matrix_tex), FadeOut(summary))
     
     def _eigen_3d_rotation(self):
